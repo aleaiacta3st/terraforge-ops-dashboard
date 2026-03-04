@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.equipment import Equipment
 from app.schemas.equipment import EquipmentCreate, EquipmentResponse, EquipmentUpdate
+from app.auth import get_current_user
+from app.models.user import User
+
 
 router = APIRouter()
 
@@ -23,7 +26,7 @@ def get_equipment_item(equipment_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=EquipmentResponse, status_code=201)
-def create_equipment(equipment_data: EquipmentCreate, db: Session = Depends(get_db)):
+def create_equipment(equipment_data: EquipmentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     equipment = Equipment(**equipment_data.model_dump())
     db.add(equipment)
     db.commit()
@@ -32,7 +35,7 @@ def create_equipment(equipment_data: EquipmentCreate, db: Session = Depends(get_
 
 
 @router.put("/{equipment_id}", response_model=EquipmentResponse)
-def update_equipment(equipment_id: int, equipment_data: EquipmentUpdate, db: Session = Depends(get_db)):
+def update_equipment(equipment_id: int, equipment_data: EquipmentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     equipment = db.query(Equipment).filter(Equipment.id == equipment_id).first()
     if not equipment:
         raise HTTPException(status_code=404, detail="Equipment not found")
@@ -46,7 +49,7 @@ def update_equipment(equipment_id: int, equipment_data: EquipmentUpdate, db: Ses
 
 
 @router.delete("/{equipment_id}", status_code=204)
-def delete_equipment(equipment_id: int, db: Session = Depends(get_db)):
+def delete_equipment(equipment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     equipment = db.query(Equipment).filter(Equipment.id == equipment_id).first()
     if not equipment:
         raise HTTPException(status_code=404, detail="Equipment not found")

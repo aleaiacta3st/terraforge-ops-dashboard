@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.routers import projects, employees, incidents, equipment
+from app.routers import projects, employees, incidents, equipment, auth
 
 app = FastAPI(
     title="Terraforge Operations Dashboard",
@@ -21,6 +20,7 @@ app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(employees.router, prefix="/employees", tags=["Employees"])
 app.include_router(incidents.router, prefix="/incidents", tags=["Safety Incidents"])
 app.include_router(equipment.router, prefix="/equipment", tags=["Equipment"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 
 @app.get("/health")

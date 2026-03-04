@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.incident import SafetyIncident
 from app.schemas.incident import IncidentCreate, IncidentResponse, IncidentUpdate
+from app.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -23,7 +25,7 @@ def get_incident(incident_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=IncidentResponse, status_code=201)
-def create_incident(incident_data: IncidentCreate, db: Session = Depends(get_db)):
+def create_incident(incident_data: IncidentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     incident = SafetyIncident(**incident_data.model_dump())
     db.add(incident)
     db.commit()
@@ -32,7 +34,7 @@ def create_incident(incident_data: IncidentCreate, db: Session = Depends(get_db)
 
 
 @router.put("/{incident_id}", response_model=IncidentResponse)
-def update_incident(incident_id: int, incident_data: IncidentUpdate, db: Session = Depends(get_db)):
+def update_incident(incident_id: int, incident_data: IncidentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     incident = db.query(SafetyIncident).filter(SafetyIncident.id == incident_id).first()
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -46,7 +48,7 @@ def update_incident(incident_id: int, incident_data: IncidentUpdate, db: Session
 
 
 @router.delete("/{incident_id}", status_code=204)
-def delete_incident(incident_id: int, db: Session = Depends(get_db)):
+def delete_incident(incident_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     incident = db.query(SafetyIncident).filter(SafetyIncident.id == incident_id).first()
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
