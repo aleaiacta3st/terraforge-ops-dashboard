@@ -54,3 +54,4 @@ class SafetyIncident(Base):
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="incidents")
     reported_by_employee: Mapped["Employee"] = relationship("Employee", back_populates="reported_incidents")
+    analysis: Mapped[Optional["IncidentAnalysis"]] = relationship("IncidentAnalysis", back_populates="incident")

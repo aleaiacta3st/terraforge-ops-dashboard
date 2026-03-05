@@ -31,6 +31,7 @@ services:
       DATABASE_URL: postgresql://terraforge:terraforge_dev@db:5432/terraforge_db
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-change-in-production
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
 
   celery_worker:
     build: .
@@ -44,6 +45,7 @@ services:
       DATABASE_URL: postgresql://terraforge:terraforge_dev@db:5432/terraforge_db
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-change-in-production
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
 
 volumes:
   pgdata:

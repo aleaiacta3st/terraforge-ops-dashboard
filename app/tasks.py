@@ -1,6 +1,10 @@
+import anthropic
+
 from app.celery_app import celery_app
+from app.config import ANTHROPIC_API_KEY
 from app.database import SessionLocal
 from app.models.incident import SafetyIncident
+from app.models.analysis import IncidentAnalysis
 
 
 @celery_app.task
@@ -29,6 +33,76 @@ def generate_safety_report(project_id: int):
         }
 
         return report
+
+    finally:
+        db.close()
+
+
+@celery_app.task
+def analyse_incident(incident_id: int):
+    db = SessionLocal()
+    try:
+        # fetch incident and its related data
+        incident = db.query(SafetyIncident).filter(SafetyIncident.id == incident_id).first()
+        if not incident:
+            return {"error": "Incident not found"}
+
+        # build the prompt using real data
+        prompt = f"""You are a mining safety expert. Analyse the following safety incident and provide a structured assessment.
+
+Incident Title: {incident.title}
+Incident Type: {incident.incident_type.value}
+Severity: {incident.severity.value}
+Status: {incident.status.value}
+Date Occurred: {incident.date_occurred}
+Project: {incident.project.name}
+Site Location: {incident.project.site_location}
+Project Type: {incident.project.project_type.value}
+Reported By: {incident.reported_by_employee.full_name} ({incident.reported_by_employee.role.value})
+Description: {incident.description}
+
+Respond in exactly this format with no extra text:
+
+RISK_LEVEL: [one of: Low, Medium, High, Critical]
+
+CONTRIBUTING_FACTORS: [a concise paragraph identifying the key contributing factors]
+
+RECOMMENDATIONS: [a concise paragraph with specific corrective actions and preventive measures]"""
+
+        # call the Claude API
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw_response = message.content[0].text
+
+        # parse the structured response
+        risk_level = ""
+        contributing_factors = ""
+        recommendations = ""
+
+        for line in raw_response.split("\n"):
+            if line.startswith("RISK_LEVEL:"):
+                risk_level = line.replace("RISK_LEVEL:", "").strip()
+            elif line.startswith("CONTRIBUTING_FACTORS:"):
+                contributing_factors = line.replace("CONTRIBUTING_FACTORS:", "").strip()
+            elif line.startswith("RECOMMENDATIONS:"):
+                recommendations = line.replace("RECOMMENDATIONS:", "").strip()
+
+        # save to the database
+        analysis = IncidentAnalysis(
+            incident_id=incident_id,
+            risk_level=risk_level,
+            contributing_factors=contributing_factors,
+            recommendations=recommendations,
+            raw_response=raw_response,
+        )
+        db.add(analysis)
+        db.commit()
+
+        return {"incident_id": incident_id, "status": "completed"}
 
     finally:
         db.close()
