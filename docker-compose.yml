@@ -32,5 +32,18 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-change-in-production
 
+  celery_worker:
+    build: .
+    command: celery -A app.celery_app:celery_app worker --loglevel=info
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql://terraforge:terraforge_dev@db:5432/terraforge_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production
+
 volumes:
   pgdata:
