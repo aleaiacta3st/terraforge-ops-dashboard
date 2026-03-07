@@ -7,6 +7,8 @@ function Incidents() {
   const [selectedIncident, setSelectedIncident] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [similar, setSimilar] = useState([])
+  const [similarLoading, setSimilarLoading] = useState(false)
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [loginError, setLoginError] = useState('')
 
@@ -35,7 +37,7 @@ function Incidents() {
       localStorage.setItem('token', res.data.access_token)
       setToken(res.data.access_token)
       setLoginError('')
-    } catch (err) {
+    } catch {
       setLoginError('Invalid username or password')
     }
   }
@@ -45,7 +47,6 @@ function Incidents() {
     setAnalysis(null)
     try {
       await api.post(`/incidents/${incidentId}/analyse`)
-      // Poll for results
       let attempts = 0
       while (attempts < 10) {
         await new Promise(r => setTimeout(r, 2000))
@@ -64,7 +65,7 @@ function Incidents() {
     }
   }
 
-  async function viewAnalysis(incidentId) {
+  async function fetchAnalysis(incidentId) {
     setAnalysisLoading(true)
     setAnalysis(null)
     try {
@@ -77,10 +78,25 @@ function Incidents() {
     }
   }
 
+  async function fetchSimilar(incidentId) {
+    setSimilarLoading(true)
+    setSimilar([])
+    try {
+      const res = await api.get(`/incidents/${incidentId}/similar`)
+      setSimilar(res.data)
+    } catch {
+      setSimilar([])
+    } finally {
+      setSimilarLoading(false)
+    }
+  }
+
   function selectIncident(incident) {
     setSelectedIncident(incident)
     setAnalysis(null)
-    viewAnalysis(incident.id)
+    setSimilar([])
+    fetchAnalysis(incident.id)
+    fetchSimilar(incident.id)
   }
 
   if (loading) return <p className="p-8">Loading...</p>
@@ -152,13 +168,30 @@ function Incidents() {
                 <p><span className="text-gray-400">Description:</span> {selectedIncident.description}</p>
               </div>
 
+              {similarLoading && <p className="text-gray-400 text-sm mb-4">Finding similar incidents...</p>}
+              {similar.length > 0 && (
+                <div className="mb-6 border-t border-gray-700 pt-4">
+                  <h3 className="font-bold text-yellow-400 mb-3">Similar Past Incidents</h3>
+                  <div className="space-y-2">
+                    {similar.map(s => (
+                      <div key={s.id} className="bg-gray-700 rounded p-3 text-sm">
+                        <p className="font-bold">{s.title}</p>
+                        <p className="text-gray-400">
+                          <span className={severityColor[s.severity]}>{s.severity}</span> · {s.incident_type} · {s.date_occurred}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {token && (
                 <button
                   onClick={() => triggerAnalysis(selectedIncident.id)}
                   disabled={analysisLoading}
                   className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 px-4 py-2 rounded mb-4 w-full"
                 >
-                  {analysisLoading ? 'Analysing...' : 'Run AI Analysis'}
+                  {analysisLoading ? 'Analysing...' : analysis ? 'Redo AI Analysis' : 'Run AI Analysis'}
                 </button>
               )}
 
@@ -166,7 +199,8 @@ function Incidents() {
 
               {analysis && (
                 <div className="space-y-3 mt-4 border-t border-gray-700 pt-4">
-                  <h3 className="font-bold text-blue-400">AI Analysis</h3>
+                  <h3 className="font-bold text-blue-400">AI Analysis (RAG-Enhanced)</h3>
+                  <p className="text-gray-400 text-sm">Analysed: {new Date(analysis.created_at).toLocaleString()}</p>
                   <p><span className="text-gray-400">Risk Level:</span> <span className={severityColor[analysis.risk_level?.toLowerCase()] || 'text-white'}> {analysis.risk_level}</span></p>
                   <p><span className="text-gray-400">Contributing Factors:</span> {analysis.contributing_factors}</p>
                   <p><span className="text-gray-400">Recommendations:</span> {analysis.recommendations}</p>
