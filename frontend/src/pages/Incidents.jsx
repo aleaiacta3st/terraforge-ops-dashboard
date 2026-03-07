@@ -9,8 +9,6 @@ function Incidents() {
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [similar, setSimilar] = useState([])
   const [similarLoading, setSimilarLoading] = useState(false)
-  const [token, setToken] = useState(localStorage.getItem('token'))
-  const [loginError, setLoginError] = useState('')
 
   useEffect(() => {
     async function fetchIncidents() {
@@ -25,22 +23,6 @@ function Incidents() {
     }
     fetchIncidents()
   }, [])
-
-  async function handleLogin(e) {
-    e.preventDefault()
-    const form = e.target
-    const username = form.username.value
-    const password = form.password.value
-
-    try {
-      const res = await api.post('/auth/login', new URLSearchParams({ username, password }))
-      localStorage.setItem('token', res.data.access_token)
-      setToken(res.data.access_token)
-      setLoginError('')
-    } catch {
-      setLoginError('Invalid username or password')
-    }
-  }
 
   async function triggerAnalysis(incidentId) {
     setAnalysisLoading(true)
@@ -112,18 +94,6 @@ function Incidents() {
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-8">Safety Incidents</h1>
 
-      {!token && (
-        <div className="bg-gray-800 rounded p-4 mb-8 max-w-md">
-          <p className="mb-3 text-yellow-400">Log in to trigger AI analysis</p>
-          <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <input name="username" placeholder="Username" className="bg-gray-700 p-2 rounded" />
-            <input name="password" type="password" placeholder="Password" className="bg-gray-700 p-2 rounded" />
-            <button type="submit" className="bg-blue-600 hover:bg-blue-500 p-2 rounded">Log In</button>
-            {loginError && <p className="text-red-400 text-sm">{loginError}</p>}
-          </form>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <div className="bg-gray-800 rounded overflow-hidden">
@@ -185,15 +155,13 @@ function Incidents() {
                 </div>
               )}
 
-              {token && (
-                <button
-                  onClick={() => triggerAnalysis(selectedIncident.id)}
-                  disabled={analysisLoading}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 px-4 py-2 rounded mb-4 w-full"
-                >
-                  {analysisLoading ? 'Analysing...' : analysis ? 'Redo AI Analysis' : 'Run AI Analysis'}
-                </button>
-              )}
+              <button
+                onClick={() => triggerAnalysis(selectedIncident.id)}
+                disabled={analysisLoading}
+                className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 px-4 py-2 rounded mb-4 w-full"
+              >
+                {analysisLoading ? 'Analysing...' : analysis ? 'Redo AI Analysis' : 'Run AI Analysis'}
+              </button>
 
               {analysisLoading && <p className="text-gray-400">Waiting for AI analysis...</p>}
 
