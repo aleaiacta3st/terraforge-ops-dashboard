@@ -5,6 +5,7 @@ from app.config import ANTHROPIC_API_KEY
 from app.database import SessionLocal
 from app.models.incident import SafetyIncident
 from app.models.analysis import IncidentAnalysis
+from app.services.embeddings import get_embedding
 
 
 @celery_app.task
@@ -47,7 +48,28 @@ def analyse_incident(incident_id: int):
         if not incident:
             return {"error": "Incident not found"}
 
-        # build the prompt using real data
+        # Generate embedding if missing
+        if incident.embedding is None:
+            text = f"{incident.title}. {incident.description}"
+            incident.embedding = get_embedding(text)
+            db.commit()
+
+        # Find similar past incidents using embeddings (RAG retrieval step)
+        similar_context = ""
+        similar = (
+            db.query(SafetyIncident)
+            .filter(SafetyIncident.id != incident_id)
+            .filter(SafetyIncident.embedding != None)
+            .order_by(SafetyIncident.embedding.cosine_distance(incident.embedding))
+            .limit(3)
+            .all()
+        )
+        if similar:
+            similar_context = "\n\nSimilar Past Incidents:\n"
+            for i, s in enumerate(similar, 1):
+                similar_context += f"{i}. {s.title} (Severity: {s.severity.value}, Type: {s.incident_type.value}, Project: {s.project.name})\n"
+
+        # build the prompt using real data + similar incidents (RAG augmentation step)
         prompt = f"""You are a mining safety expert. Analyse the following safety incident and provide a structured assessment.
 
 Incident Title: {incident.title}
@@ -60,7 +82,7 @@ Site Location: {incident.project.site_location}
 Project Type: {incident.project.project_type.value}
 Reported By: {incident.reported_by_employee.full_name} ({incident.reported_by_employee.role.value})
 Description: {incident.description}
-
+{similar_context}
 Respond in exactly this format with no extra text:
 
 RISK_LEVEL: [one of: Low, Medium, High, Critical]
@@ -69,7 +91,7 @@ CONTRIBUTING_FACTORS: [a concise paragraph identifying the key contributing fact
 
 RECOMMENDATIONS: [a concise paragraph with specific corrective actions and preventive measures]"""
 
-        # call the Claude API
+        # call the Claude API (RAG generation step)
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",

@@ -6,6 +6,7 @@ from sqlalchemy import String, Text, Date, DateTime, Enum, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from pgvector.sqlalchemy import Vector
 
 
 class IncidentType(str, enum.Enum):
@@ -50,6 +51,7 @@ class SafetyIncident(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    embedding = mapped_column(Vector(1536), nullable=True)
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="incidents")

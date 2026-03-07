@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routers import projects, employees, incidents, equipment, auth, reports
+from app.routers import similar
 import os
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.include_router(incidents.router, prefix="/incidents", tags=["Safety Incident
 app.include_router(equipment.router, prefix="/equipment", tags=["Equipment"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
+app.include_router(similar.router, prefix="/incidents", tags=["Similar Incidents"])
 
 @app.get("/health")
 def health_check():
