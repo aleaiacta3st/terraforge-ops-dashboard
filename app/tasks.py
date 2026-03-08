@@ -6,6 +6,8 @@ from app.database import SessionLocal
 from app.models.incident import SafetyIncident
 from app.models.analysis import IncidentAnalysis
 from app.services.embeddings import get_embedding
+import redis
+
 
 
 @celery_app.task
@@ -123,6 +125,9 @@ RECOMMENDATIONS: [a concise paragraph with specific corrective actions and preve
         )
         db.add(analysis)
         db.commit()
+
+        r = redis.Redis(host="redis", port=6379)
+        r.publish("analysis_updates", f"{incident_id}")
 
         return {"incident_id": incident_id, "status": "completed"}
 

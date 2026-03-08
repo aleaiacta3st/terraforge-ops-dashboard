@@ -2,9 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.routers import projects, employees, incidents, equipment, auth, reports
+from app.routers import projects, employees, incidents, equipment, auth, reports,ws
 from app.routers import similar
-import os
+import os 
+
+
+
 
 app = FastAPI(
     title="Terraforge Operations Dashboard",
@@ -20,6 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+async def startup():
+    import asyncio
+    from app.routers.ws import redis_listener
+    app.state.redis_listener_task = asyncio.create_task(redis_listener())
+    print("STARTUP: redis listener task created", flush=True)
+
+
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(employees.router, prefix="/employees", tags=["Employees"])
 app.include_router(incidents.router, prefix="/incidents", tags=["Safety Incidents"])
@@ -27,6 +39,7 @@ app.include_router(equipment.router, prefix="/equipment", tags=["Equipment"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 app.include_router(similar.router, prefix="/incidents", tags=["Similar Incidents"])
+app.include_router(ws.router)
 
 @app.get("/health")
 def health_check():

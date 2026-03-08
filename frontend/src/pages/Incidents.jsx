@@ -9,6 +9,7 @@ function Incidents() {
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [similar, setSimilar] = useState([])
   const [similarLoading, setSimilarLoading] = useState(false)
+  const [wsAnalysis, setWsAnalysis] = useState(null)
 
   useEffect(() => {
     async function fetchIncidents() {
@@ -22,6 +23,23 @@ function Incidents() {
       }
     }
     fetchIncidents()
+
+    
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`
+    
+    const ws = new WebSocket(wsUrl)
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data)
+      if (data.type === 'analysis_complete') {
+        setWsAnalysis(data)
+      }
+    }
+
+    return () => {
+      ws.close()
+    }
   }, [])
 
   async function triggerAnalysis(incidentId) {
@@ -29,23 +47,18 @@ function Incidents() {
     setAnalysis(null)
     try {
       await api.post(`/incidents/${incidentId}/analyse`)
-      let attempts = 0
-      while (attempts < 10) {
-        await new Promise(r => setTimeout(r, 2000))
-        try {
-          const res = await api.get(`/incidents/${incidentId}/analyse`)
-          setAnalysis(res.data)
-          break
-        } catch {
-          attempts++
-        }
-      }
     } catch (err) {
       console.error('Analysis failed:', err)
-    } finally {
       setAnalysisLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (wsAnalysis && selectedIncident && wsAnalysis.incident_id === selectedIncident.id) {
+      setAnalysis(wsAnalysis)
+      setAnalysisLoading(false)
+    }
+  }, [wsAnalysis, selectedIncident])
 
   async function fetchAnalysis(incidentId) {
     setAnalysisLoading(true)
