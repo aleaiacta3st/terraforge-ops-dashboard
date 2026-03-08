@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.analysis import IncidentAnalysis
+from app.config import REDIS_URL
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ connected_clients = []
 async def redis_listener():
     print("REDIS LISTENER: starting up", flush=True)
     try:
-        r = aioredis.Redis(host="redis", port=6379)
+        r = aioredis.from_url(REDIS_URL)
         pubsub = r.pubsub()
         await pubsub.subscribe("analysis_updates")
         print("REDIS LISTENER: subscribed to analysis_updates", flush=True)

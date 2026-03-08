@@ -7,6 +7,7 @@ from app.models.incident import SafetyIncident
 from app.models.analysis import IncidentAnalysis
 from app.services.embeddings import get_embedding
 import redis
+from app.config import REDIS_URL
 
 
 
@@ -126,7 +127,7 @@ RECOMMENDATIONS: [a concise paragraph with specific corrective actions and preve
         db.add(analysis)
         db.commit()
 
-        r = redis.Redis(host="redis", port=6379)
+        r = redis.Redis.from_url(REDIS_URL)
         r.publish("analysis_updates", f"{incident_id}")
 
         return {"incident_id": incident_id, "status": "completed"}
